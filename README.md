@@ -6,10 +6,21 @@ Nimbus is a cross-platform weather application for your terminal. Use `wf` to ge
 
 ### Requirements
 
-- Python 3.11 or newer
+- Python 3.11 or newer for installation from source
+- Homebrew and macOS Apple Silicon for the Homebrew package
 - Internet access for live weather, geocoding, and air-quality requests
 
-### Install from GitHub
+### Install with Homebrew (macOS Apple Silicon)
+
+Once Nimbus has been published to the Homebrew tap, install it with one command:
+
+```sh
+brew install olympus-mons26/tap/nimbus
+```
+
+Homebrew will add the tap automatically. If the formula is not available yet, the repository owner needs to complete the one-time setup in the [Homebrew publishing guide](docs/HOMEBREW.md) and publish the first release.
+
+### Install from source with Python
 
 ```sh
 git clone https://github.com/olympus-mons26/nimbus.git
@@ -28,14 +39,42 @@ python -m pip install -e ".[test]"
 pytest
 ```
 
-Homebrew publishing is automated but requires a tap repository and the `HOMEBREW_TAP_TOKEN` secret. Follow [the Homebrew publishing guide](docs/HOMEBREW.md) before pushing to `main`. Once the first release completes, install with:
+Homebrew publishing is automated but requires a tap repository and the `HOMEBREW_TAP_TOKEN` secret. Follow [the Homebrew publishing guide](docs/HOMEBREW.md) before pushing to `main`; the one-command install above works once the first release is published. The current tap build supports macOS Apple Silicon only. PyPI publication has not been configured.
+
+## Update or uninstall
+
+### Homebrew
+
+Update Homebrew's package information, then upgrade Nimbus:
 
 ```sh
-brew tap olympus-mons26/tap
-brew install olympus-mons26/tap/nimbus
+brew update
+brew upgrade olympus-mons26/tap/nimbus
 ```
 
-The current tap build supports macOS Apple Silicon only. PyPI publication has not been configured.
+Uninstall it with:
+
+```sh
+brew uninstall olympus-mons26/tap/nimbus
+```
+
+### Python installation
+
+To update an installation made from a local Git checkout, pull the latest changes and reinstall:
+
+```sh
+cd /path/to/nimbus
+git pull
+python -m pip install --upgrade .
+```
+
+Uninstall the Python package from the same Python environment where it was installed:
+
+```sh
+python -m pip uninstall nimbus-weather-cli
+```
+
+Uninstalling Nimbus does not remove its saved preferences or weather cache. These are stored separately from the executable; remove them only if you also want to delete your Nimbus settings and cached data. Their locations are listed under [Save preferences](#save-preferences).
 
 ## Run locally
 
@@ -76,16 +115,6 @@ The script builds `dist/wf`, packages it with the README and license in a platfo
 
 ## Use
 
-### Run with Docker
-
-Docker is optional. Build the image from the repository root:
-
-```sh
-docker build -t nimbus-weather .
-docker run --rm nimbus-weather London
-docker run --rm nimbus-weather London -json
-```
-
 ### Get a forecast
 
 ```sh
@@ -100,6 +129,18 @@ If you omit the city, `wf` uses your saved default city. Set or clear that value
 wd London
 wf
 wd --clear
+```
+
+Run `wh` or `wf --help` for help. In Nimbus, `-h` means hourly forecast; it is not the help option.
+
+### Run with Docker
+
+Docker is optional. Build the image from the repository root:
+
+```sh
+docker build -t nimbus-weather .
+docker run --rm nimbus-weather London
+docker run --rm nimbus-weather London -json
 ```
 
 ### Save preferences
@@ -123,6 +164,12 @@ Preferences are stored in TOML in your platform's user configuration directory:
 - macOS: `~/Library/Application Support/nimbus-weather/config.toml`
 - Windows: `%APPDATA%/nimbus-weather/config.toml`
 - Linux: `$XDG_CONFIG_HOME/nimbus-weather/config.toml` or `~/.config/nimbus-weather/config.toml`
+
+Cached weather responses are stored separately:
+
+- macOS: `~/Library/Caches/nimbus-weather`
+- Windows: `%LOCALAPPDATA%/nimbus-weather`
+- Linux: `$XDG_CACHE_HOME/nimbus-weather` or `~/.cache/nimbus-weather`
 
 Command-line options override saved preferences for the current run.
 
@@ -149,12 +196,12 @@ Weather and geocoding data are provided by [Open-Meteo](https://open-meteo.com/)
 | --- | --- |
 | `-h` | Show the next 12 hours of hourly forecast. This is not help. |
 | `-dN` | Show `N` forecast days (1–16), for example `-d5`. `-d` without a number selects 3 days. |
-| `-aqi` | Include current air quality and pollutant readings using the US AQI scale. |
+| `-aqi`, `--aqi` | Include current air quality and pollutant readings using the US AQI scale. |
 | `-c` | Display temperatures in Celsius (the default). |
 | `-f` | Display temperatures in Fahrenheit. Mutually exclusive with `-c`. |
 | `-v` | Show available feels-like temperature, humidity, UV index, wind, pressure, visibility, sunrise/sunset, and cloud cover. |
-| `-json` | Emit machine-readable JSON without terminal decoration. |
-| `-nocolor` | Disable colors, emojis, logo, borders, panels, and tables. |
+| `-json`, `--json` | Emit machine-readable JSON without terminal decoration. |
+| `-nocolor`, `--nocolor` | Disable colors, emojis, logo, borders, panels, and tables. |
 | `--help` | Show forecast-command help. |
 | `--version` | Show application version. |
 

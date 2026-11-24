@@ -57,6 +57,11 @@ Examples:
   wd "New York"
   ws set unit fahrenheit
 
+Uninstall:
+  Homebrew: brew uninstall olympus-mons26/tap/nimbus
+  Python:   python -m pip uninstall nimbus-weather-cli
+  Run the Python command in the environment where Nimbus was installed.
+
 Install for development: python -m pip install -e '.[test]'
 Documentation: https://github.com/olympus-mons26/nimbus
 Weather data: Open-Meteo (https://open-meteo.com/). Terms apply.
