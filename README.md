@@ -30,6 +30,32 @@ pytest
 
 Nimbus has not yet been published to PyPI, Homebrew, or other package repositories. The Homebrew formula in `installers/homebrew/` is a template, not an available published formula.
 
+## Run locally
+
+From the project directory, create and activate a virtual environment, then install Nimbus in editable mode:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[test]"
+```
+
+On Windows PowerShell, activate the environment with:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Now run the CLI from the repository:
+
+```sh
+wd London
+wf
+wf Tokyo -h -f
+```
+
+Run the test suite with `python -m pytest -v`. To leave the environment, run `deactivate`.
+
 ## Use
 
 ### Get a forecast
@@ -148,7 +174,7 @@ Illustrative values only; Nimbus displays actual values returned by the API.
 │ Hyderabad, Telangana, India                              │
 ╰──────────────────────────────────────────────────────────╯
 ☀️  Clear sky
-Current observation: 2026-11-24T10:00
+Time checked: 2026-11-24 10:00:00 (Asia/Kolkata)
 Current temperature: 29°C
 Data source: live Open-Meteo data
 

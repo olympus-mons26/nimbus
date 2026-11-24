@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Sequence
 
 from rich import box
 from rich.console import Console
@@ -122,8 +123,7 @@ def format_weather(
         console.print(f"Location: {location.label}")
         console.print(f"Condition: {condition}")
 
-    if current.get("time"):
-        console.print(f"Current observation: {current['time']}")
+    console.print(f"Time checked: {_time_checked(weather)}")
     if current.get("temperature_2m") is not None:
         console.print(f"Current temperature: {current['temperature_2m']}{temperature_unit}")
     if cached:
@@ -137,9 +137,9 @@ def format_weather(
     lows = daily.get("temperature_2m_min", [])
     rain = daily.get("precipitation_probability_max", [])
     if hourly:
-        _print_hourly(console, hourly_data, temperature_unit, wind_unit, emoji, plain, color)
+        _print_hourly(console, hourly_data, temperature_unit, wind_unit, plain, color)
     elif days > 1:
-        _print_daily(console, daily, days, temperature_unit, emoji, plain, color)
+        _print_daily(console, daily, days, temperature_unit, plain, color)
     elif highs and lows:
         values = (
             f"Maximum: {highs[0]}{temperature_unit}    Minimum: {lows[0]}{temperature_unit}\n"
@@ -164,9 +164,12 @@ def format_weather(
         _add_detail(details, "Sunset", _first(daily.get("sunset")), "")
         if details:
             if plain:
-                console.print("\nAdditional conditions\n" + "\n".join(details))
+                rows = [detail.split(": ", 1) for detail in details]
+                console.print("\nAdditional conditions\n" + _plain_table(("Condition", "Value"), rows))
             else:
-                table = Table(title="Additional conditions", box=box.SIMPLE, show_header=False)
+                table = _styled_table("Additional conditions", color, show_header=False)
+                table.add_column("Condition", no_wrap=True)
+                table.add_column("Value", no_wrap=True, overflow="ellipsis")
                 for detail in details:
                     name, value = detail.split(": ", 1)
                     table.add_row(name, value)
@@ -200,7 +203,7 @@ def format_weather(
 
 def _print_hourly(
     console: Console, hourly: dict[str, Any], temp_unit: str, wind_unit: str,
-    emoji: bool, plain: bool, color: bool,
+    plain: bool, color: bool,
 ) -> None:
     times = hourly.get("time", [])[:12]
     temps = hourly.get("temperature_2m", [])
@@ -208,28 +211,35 @@ def _print_hourly(
     rain = hourly.get("precipitation_probability", [])
     wind = hourly.get("wind_speed_10m", [])
     if plain:
-        rows = ["\nHourly forecast (next 12 hours)", "Time | Temp | Condition | Rain | Wind"]
+        rows = []
         for index, timestamp in enumerate(times):
             code = _int_or_none(_at(codes, index))
             rows.append(
-                f"{timestamp} | {_at(temps, index)}{temp_unit} | "
-                f"{WEATHER_CODES.get(code, 'Unavailable')} | {_percent(_at(rain, index))} | "
-                f"{_at(wind, index)} {wind_unit}"
+                (
+                    str(timestamp)[11:16],
+                    f"{_at(temps, index)}{temp_unit}",
+                    WEATHER_CODES.get(code, "Unavailable"),
+                    _percent(_at(rain, index)),
+                    f"{_at(wind, index)} {wind_unit}",
+                )
             )
-        console.print("\n".join(rows))
+        console.print(
+            "\nHourly forecast (next 12 hours)\n"
+            + _plain_table(("Time", "Temperature", "Conditions", "Rain", "Wind"), rows)
+        )
         return
-    table = Table(title="Hourly forecast · next 12 hours", box=box.ROUNDED if color else box.SIMPLE)
-    for heading in ("Time", "Temperature", "Conditions", "Rain", "Wind"):
-        table.add_column(heading, style="cyan" if color else None)
+    table = _styled_table("Hourly forecast · next 12 hours", color)
+    table.add_column("Time", style="cyan" if color else None, no_wrap=True)
+    table.add_column("Temperature", justify="right", no_wrap=True)
+    table.add_column("Conditions", no_wrap=True, overflow="ellipsis")
+    table.add_column("Rain", justify="right", no_wrap=True)
+    table.add_column("Wind", justify="right", no_wrap=True)
     for index, timestamp in enumerate(times):
         code = _int_or_none(_at(codes, index))
-        icon, _ = weather_icon(code)
-        if not emoji:
-            icon = ""
         table.add_row(
             str(timestamp)[11:16],
             f"{_at(temps, index)}{temp_unit}",
-            f"{icon} {WEATHER_CODES.get(code, 'Unavailable')}".strip(),
+            WEATHER_CODES.get(code, "Unavailable"),
             _percent(_at(rain, index)),
             f"{_at(wind, index)} {wind_unit}",
         )
@@ -238,7 +248,7 @@ def _print_hourly(
 
 def _print_daily(
     console: Console, daily: dict[str, Any], days: int, temp_unit: str,
-    emoji: bool, plain: bool, color: bool,
+    plain: bool, color: bool,
 ) -> None:
     dates = daily.get("time", [])[:days]
     highs = daily.get("temperature_2m_max", [])
@@ -246,27 +256,34 @@ def _print_daily(
     codes = daily.get("weather_code", [])
     rain = daily.get("precipitation_probability_max", [])
     if plain:
-        lines = [f"\n{days}-day forecast", "Date | Conditions | Maximum | Minimum | Rain"]
+        rows = []
         for index, date in enumerate(dates):
             code = _int_or_none(_at(codes, index))
-            lines.append(
-                f"{date} | {WEATHER_CODES.get(code, 'Unavailable')} | "
-                f"{_at(highs, index)}{temp_unit} | {_at(lows, index)}{temp_unit} | "
-                f"{_percent(_at(rain, index))}"
+            rows.append(
+                (
+                    str(date),
+                    WEATHER_CODES.get(code, "Unavailable"),
+                    f"{_at(highs, index)}{temp_unit}",
+                    f"{_at(lows, index)}{temp_unit}",
+                    _percent(_at(rain, index)),
+                )
             )
-        console.print("\n".join(lines))
+        console.print(
+            f"\n{days}-day forecast\n"
+            + _plain_table(("Date", "Conditions", "Maximum", "Minimum", "Rain"), rows)
+        )
         return
-    table = Table(title=f"{days}-day forecast · daily values", box=box.ROUNDED if color else box.SIMPLE)
-    for heading in ("Date", "Conditions", "Maximum", "Minimum", "Rain"):
-        table.add_column(heading, style="cyan" if color else None)
+    table = _styled_table(f"{days}-day forecast · daily values", color)
+    table.add_column("Date", style="cyan" if color else None, no_wrap=True)
+    table.add_column("Conditions", no_wrap=True, overflow="ellipsis")
+    table.add_column("Maximum", justify="right", no_wrap=True)
+    table.add_column("Minimum", justify="right", no_wrap=True)
+    table.add_column("Rain", justify="right", no_wrap=True)
     for index, date in enumerate(dates):
         code = _int_or_none(_at(codes, index))
-        icon, _ = weather_icon(code)
-        if not emoji:
-            icon = ""
         table.add_row(
             str(date),
-            f"{icon} {WEATHER_CODES.get(code, 'Unavailable')}".strip(),
+            WEATHER_CODES.get(code, "Unavailable"),
             f"{_at(highs, index)}{temp_unit}",
             f"{_at(lows, index)}{temp_unit}",
             _percent(_at(rain, index)),
@@ -288,12 +305,12 @@ def _print_air_quality(console: Console, payload: dict[str, Any], plain: bool, c
         ("Carbon monoxide", _with_unit(current.get("carbon_monoxide"), "µg/m³")),
     ]
     if plain:
-        console.print("\nAir quality (US AQI)\n" + "\n".join(f"{key}: {value}" for key, value in values))
+        console.print("\nAir quality (US AQI)\n" + _plain_table(("Measure", "Reading"), values))
         console.print("Health note: Higher AQI values can affect health, especially for sensitive groups.")
     else:
-        table = Table(title="Air quality · US AQI", box=box.ROUNDED if color else box.SIMPLE)
-        table.add_column("Measure", style="cyan" if color else None)
-        table.add_column("Reading")
+        table = _styled_table("Air quality · US AQI", color)
+        table.add_column("Measure", style="cyan" if color else None, no_wrap=True)
+        table.add_column("Reading", no_wrap=True, overflow="ellipsis")
         for key, value in values:
             table.add_row(key, value)
         console.print(table)
@@ -302,14 +319,46 @@ def _print_air_quality(console: Console, payload: dict[str, Any], plain: bool, c
 
 def print_settings(console: Console, values: dict[str, Any], plain: bool) -> None:
     if plain:
-        console.print("\n".join(f"{key}: {value}" for key, value in values.items()))
+        console.print(_plain_table(("Setting", "Value"), list(values.items())))
         return
-    table = Table(title=APP_NAME + " settings", box=box.ROUNDED)
-    table.add_column("Setting", style="cyan")
-    table.add_column("Value")
+    table = _styled_table(APP_NAME + " settings", color=True)
+    table.add_column("Setting", style="cyan", no_wrap=True)
+    table.add_column("Value", no_wrap=True, overflow="ellipsis")
     for key, value in values.items():
         table.add_row(key, str(value))
     console.print(table)
+
+
+def _styled_table(title: str, color: bool, show_header: bool = True) -> Table:
+    return Table(
+        title=title,
+        box=box.ROUNDED if color else box.SIMPLE,
+        expand=True,
+        show_header=show_header,
+        padding=(0, 1),
+    )
+
+
+def _plain_table(
+    headers: Sequence[str],
+    rows: Sequence[Sequence[Any]],
+) -> str:
+    values = [[str(value) for value in row] for row in rows]
+    widths = [
+        max(len(headers[index]), *(len(row[index]) for row in values))
+        if values
+        else len(headers[index])
+        for index in range(len(headers))
+    ]
+    lines = [
+        "  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)),
+        "  ".join("-" * width for width in widths),
+    ]
+    lines.extend(
+        "  ".join(value.ljust(widths[index]) for index, value in enumerate(row))
+        for row in values
+    )
+    return "\n".join(lines)
 
 
 def _add_detail(details: list[str], name: str, value: Any, suffix: str) -> None:
@@ -329,6 +378,21 @@ def _float_or_none(value: Any) -> float | None:
         return float(value) if value is not None else None
     except (TypeError, ValueError):
         return None
+
+
+def _time_checked(weather: dict[str, Any]) -> str:
+    offset_seconds = weather.get("utc_offset_seconds")
+    if isinstance(offset_seconds, bool) or not isinstance(offset_seconds, int):
+        return "unavailable (city time zone data missing)"
+    try:
+        city_timezone = timezone(timedelta(seconds=offset_seconds))
+        checked_at = datetime.now(timezone.utc).astimezone(city_timezone)
+    except ValueError:
+        return "unavailable (invalid city time zone offset)"
+    timezone_name = weather.get("timezone")
+    if not isinstance(timezone_name, str) or not timezone_name or timezone_name == "auto":
+        timezone_name = checked_at.strftime("%Z")
+    return f"{checked_at:%Y-%m-%d %H:%M:%S} ({timezone_name})"
 
 
 def _without_emoji(value: str) -> str:
