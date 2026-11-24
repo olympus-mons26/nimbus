@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[test]"
+      - run: python -m pytest
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-arm64
+            os: macos-15
+          - name: macos-x86_64
+            os: macos-15-intel
+          - name: windows-x86_64
+            os: windows-latest
+          - name: linux-x86_64
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ".[build]"
+      - run: python scripts/build.py
+      - name: Package macOS archive and DMG
+        if: startsWith(matrix.name, 'macos-')
+        run: |
+          mkdir package
+          cp dist/wf package/wf
+          tar -czf wf-${{ matrix.name }}.tar.gz -C package wf
+          hdiutil create -volname "Nimbus Weather CLI" -srcfolder package -ov -format UDZO wf-${{ matrix.name }}.dmg
+      - name: Package Windows executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Copy-Item dist/wf.exe wf-${{ matrix.name }}.exe
+      - name: Package Linux archive
+        if: runner.os == 'Linux'
+        run: tar -czf wf-${{ matrix.name }}.tar.gz -C dist wf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.name }}
+          path: |
+            wf-*.tar.gz
+            wf-*.dmg
+            wf-*.exe
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Generate checksums
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          files = sorted(path for path in Path("release-assets").iterdir() if path.is_file())
+          with Path("release-assets/SHA256SUMS").open("w", encoding="utf-8") as output:
+              for path in files:
+                  digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                  output.write(f"{digest}  {path.name}\n")
+          PY
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-assets/*
