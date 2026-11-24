@@ -2,7 +2,7 @@ from io import StringIO
 
 from rich.console import Console
 
-from nimbus.formatting import format_weather
+from nimbus.formatting import LOGO, format_weather, print_logo
 from nimbus.models import Location
 
 
@@ -43,3 +43,15 @@ def test_plain_output_has_no_branding_emoji_or_rich_decoration():
     assert "☀" not in text
     assert "Today's forecast" in text
     assert "Maximum: 22°C" in text
+
+
+def test_styled_logo_displays_nimbus_wordmark():
+    output = StringIO()
+    console = Console(file=output, force_terminal=False, no_color=True)
+
+    print_logo(console, color=False)
+
+    text = output.getvalue()
+    assert LOGO.startswith(" _   _   ___")
+    assert "NIMBUS WEATHER" in text
+    assert "  ____  _         _" not in text

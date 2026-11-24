@@ -16,12 +16,20 @@ from nimbus.constants import AQI_CATEGORIES, APP_NAME, WEATHER_CODES
 from nimbus.models import Location
 from nimbus.suggestions import activity_suggestion
 
-LOGO = r"""  ____  _         _
+_OLD_LOGO = r"""  ____  _         _
  / ___|| | ___   | |_   _ _ __   ___
  \___ \| |/ / | | | | | | | '_ \ / _ \
   ___) |   <| |_| | | |_| | |_) |  __/
  |____/|_|\_\__,_|_|\__, | .__/ \___|
                       |___/|_|"""
+
+LOGO = r""" _   _   ___   __  __   ____   _   _  _____
+| \ | | |_ _| |  \/  | | __ ) | | | |/ ____|
+|  \| |  | |  | |\/| | |  _ \ | | | | (___
+| |\  |  | |  | |  | | | |_) || |_| |\___ \
+|_| \_| |___| |_|  |_| |____/  \___/ |_____|
+
+"""
 
 WEATHER_ICONS = {
     0: ("☀️", "yellow"),

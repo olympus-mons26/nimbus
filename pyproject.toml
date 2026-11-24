@@ -46,11 +46,13 @@ Repository = "https://github.com/olympus-mons26/nimbus"
 Issues = "https://github.com/olympus-mons26/nimbus/issues"
 
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["nimbus*"]
 
 [tool.setuptools.package-data]
 nimbus = ["LICENSE"]
 
 [tool.pytest.ini_options]
+pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"

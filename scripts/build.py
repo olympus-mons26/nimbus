@@ -22,7 +22,7 @@ def main() -> int:
         "wf",
         "--collect-all",
         "rich",
-        "nimbus/__main__.py",
+        "src/nimbus/__main__.py",
     ]
     return subprocess.run(command, check=False).returncode
 
