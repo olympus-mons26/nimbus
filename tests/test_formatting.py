@@ -44,8 +44,47 @@ def test_plain_output_has_no_branding_emoji_or_rich_decoration():
     text = output.getvalue()
     assert "NIMBUS WEATHER" not in text
     assert "☀" not in text
+    assert "╭" not in text
+    assert "│" not in text
     assert "Today's forecast" in text
     assert "Maximum: 22°C" in text
+
+
+def test_non_color_rich_output_renders_panels_without_ansi_styles():
+    output = StringIO()
+    console = Console(file=output, force_terminal=False, no_color=True)
+    weather = {
+        "current": {"weather_code": 0, "temperature_2m": 29},
+        "daily": {
+            "temperature_2m_max": [31],
+            "temperature_2m_min": [22],
+            "precipitation_probability_max": [10],
+        },
+    }
+
+    format_weather(
+        console,
+        Location("Hyderabad", 17.4, 78.5, "India"),
+        weather,
+        unit="°C",
+        hourly=False,
+        days=1,
+        verbose=False,
+        show_aqi=False,
+        air_quality=None,
+        color=False,
+        emoji=False,
+        suggestions=True,
+        cached=False,
+        stale=False,
+        plain=False,
+    )
+
+    text = output.getvalue()
+    assert "Hyderabad, India" in text
+    assert "Today's forecast" in text
+    assert "Nimbus says" in text
+    assert "\x1b[" not in text
 
 
 def test_time_checked_uses_current_city_time_not_observation_time(monkeypatch):

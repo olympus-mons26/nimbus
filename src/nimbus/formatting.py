@@ -116,7 +116,12 @@ def format_weather(
     if not plain:
         print_logo(console, color)
         console.print()
-        console.print(Panel(Text(location.label, style="bold" if color else None), border_style="cyan" if color else None))
+        console.print(
+            Panel(
+                Text(location.label, style="bold" if color else None),
+                border_style="cyan" if color else "white",
+            )
+        )
         condition_line = f"{icon} {condition}".strip()
         console.print(Text(condition_line, style=condition_color if color else None))
     else:
@@ -148,7 +153,13 @@ def format_weather(
         if plain:
             console.print("\nToday's forecast\n" + values)
         else:
-            console.print(Panel(values, title="Today's forecast", border_style="blue" if color else None))
+            console.print(
+                Panel(
+                    values,
+                    title="Today's forecast",
+                    border_style="blue" if color else "white",
+                )
+            )
 
     if verbose:
         details = []
@@ -193,7 +204,13 @@ def format_weather(
         if plain:
             console.print(f"\nSuggestion: {advice}")
         else:
-            console.print(Panel(Text(advice, style="green" if color else None), title="Nimbus says", border_style="green" if color else None))
+            console.print(
+                Panel(
+                    Text(advice, style="green" if color else None),
+                    title="Nimbus says",
+                    border_style="green" if color else "white",
+                )
+            )
 
     if not plain and color:
         console.print("\n[dim]Weather data: Open-Meteo[/dim]")
