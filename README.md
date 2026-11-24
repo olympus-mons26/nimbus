@@ -28,7 +28,14 @@ python -m pip install -e ".[test]"
 pytest
 ```
 
-Nimbus has not yet been published to PyPI, Homebrew, or other package repositories. The Homebrew formula in `installers/homebrew/` is a template, not an available published formula.
+Homebrew publishing is automated but requires a tap repository and the `HOMEBREW_TAP_TOKEN` secret. Follow [the Homebrew publishing guide](docs/HOMEBREW.md) before pushing to `main`. Once the first release completes, install with:
+
+```sh
+brew tap olympus-mons26/tap
+brew install olympus-mons26/tap/nimbus
+```
+
+The current tap build supports macOS Apple Silicon only. PyPI publication has not been configured.
 
 ## Run locally
 
@@ -56,7 +63,28 @@ wf Tokyo -h -f
 
 Run the test suite with `python -m pytest -v`. To leave the environment, run `deactivate`.
 
+### Build a standalone executable
+
+Install the build dependency and run the shared build script:
+
+```sh
+python -m pip install ".[build]"
+python scripts/build.py
+```
+
+The script builds `dist/wf`, packages it with the README and license in a platform-specific archive under `dist/`, and writes a matching `.sha256` checksum file. It does not create a DMG. To check the executable, run `./dist/wf --version` (on Windows, run `.\dist\wf.exe --version`).
+
 ## Use
+
+### Run with Docker
+
+Docker is optional. Build the image from the repository root:
+
+```sh
+docker build -t nimbus-weather .
+docker run --rm nimbus-weather London
+docker run --rm nimbus-weather London -json
+```
 
 ### Get a forecast
 
@@ -190,3 +218,7 @@ Weather data: Open-Meteo
 ```
 
 This same NIMBUS ASCII wordmark appears in normal terminal reports. On supported interactive terminals, Nimbus adds color, condition icons, panels, and tables. Color is suppressed for non-interactive output, `NO_COLOR`, and terminals that do not support ANSI colors. JSON never includes terminal styling.
+
+## Contributing
+
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for development and contribution guidance.

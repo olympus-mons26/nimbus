@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
 
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -39,8 +39,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install ".[test]"
-          python -m pip install pyinstaller
+          python -m pip install ".[test,build]"
 
       - name: Run tests
         run: python -m pytest -v
@@ -48,62 +47,17 @@ jobs:
       - name: Build Nimbus
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-
-          python - "$VERSION" <<'PY'
-          from pathlib import Path
-          import sys
-
-          version_file = Path("src/nimbus/__init__.py")
-          source = version_file.read_text(encoding="utf-8")
-          old = '__version__ = "1.0.0"'
-          if source.count(old) != 1:
-              raise SystemExit("Could not find the package version declaration.")
-          version_file.write_text(
-              source.replace(old, f'__version__ = "{sys.argv[1]}"'),
-              encoding="utf-8",
-          )
-          PY
-
-          pyinstaller \
-            --onefile \
-            --name wf \
-            --clean \
-            --paths src \
-            --collect-all nimbus \
-            --collect-all rich \
-            src/nimbus/main.py
-
-      - name: Package release
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          mkdir -p staging
-
-          cp dist/wf staging/
-          cp README.md staging/README.txt
-
-          tar -czf \
-            "nimbus-macos-arm64.tar.gz" \
-            -C staging .
-
-          mkdir -p dmg-root
-          cp dist/wf dmg-root/
-          cp README.md dmg-root/README.txt
-
-          hdiutil create \
-            -volname "Nimbus" \
-            -srcfolder dmg-root \
-            -ov \
-            -format UDZO \
-            "Nimbus-macos-arm64.dmg"
+          python scripts/build.py \
+            --version "$VERSION" \
+            --artifact-name nimbus-macos-arm64
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nimbus-release
           path: |
-            nimbus-macos-arm64.tar.gz
-            Nimbus-macos-arm64.dmg
+            dist/nimbus-macos-arm64.tar.gz
+            dist/nimbus-macos-arm64.tar.gz.sha256
 
   publish:
     needs: build
@@ -115,11 +69,6 @@ jobs:
         with:
           name: nimbus-release
 
-      - name: Generate checksum
-        run: |
-          sha256sum nimbus-macos-arm64.tar.gz \
-            > SHA256SUMS
-
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -128,8 +77,7 @@ jobs:
 
           gh release create "$VERSION" \
             nimbus-macos-arm64.tar.gz \
-            Nimbus-macos-arm64.dmg \
-            SHA256SUMS \
+            nimbus-macos-arm64.tar.gz.sha256 \
             --repo "$GITHUB_REPOSITORY" \
             --title "Nimbus $VERSION" \
             --generate-notes \
@@ -178,6 +126,7 @@ jobs:
             sha256 "${SHA}"
 
             depends_on :macos
+            depends_on arch: :arm64
 
             def install
               bin.install "wf"

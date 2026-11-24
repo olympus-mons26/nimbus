@@ -45,28 +45,17 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install ".[build]"
-      - run: python scripts/build.py
-      - name: Package macOS archive and DMG
-        if: startsWith(matrix.name, 'macos-')
+      - name: Build and package Nimbus
+        shell: bash
         run: |
-          mkdir package
-          cp dist/wf package/wf
-          tar -czf wf-${{ matrix.name }}.tar.gz -C package wf
-          hdiutil create -volname "Nimbus Weather CLI" -srcfolder package -ov -format UDZO wf-${{ matrix.name }}.dmg
-      - name: Package Windows executable
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: Copy-Item dist/wf.exe wf-${{ matrix.name }}.exe
-      - name: Package Linux archive
-        if: runner.os == 'Linux'
-        run: tar -czf wf-${{ matrix.name }}.tar.gz -C dist wf
+          VERSION="${GITHUB_REF_NAME#v}"
+          python scripts/build.py \
+            --version "$VERSION" \
+            --artifact-name "wf-${{ matrix.name }}"
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.name }}
-          path: |
-            wf-*.tar.gz
-            wf-*.dmg
-            wf-*.exe
+          path: dist/wf-${{ matrix.name }}*
 
   publish:
     needs: build
@@ -82,7 +71,10 @@ jobs:
           python - <<'PY'
           import hashlib
           from pathlib import Path
-          files = sorted(path for path in Path("release-assets").iterdir() if path.is_file())
+          files = sorted(
+              path for path in Path("release-assets").iterdir()
+              if path.is_file() and not path.name.endswith(".sha256")
+          )
           with Path("release-assets/SHA256SUMS").open("w", encoding="utf-8") as output:
               for path in files:
                   digest = hashlib.sha256(path.read_bytes()).hexdigest()
