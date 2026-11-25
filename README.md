@@ -1,5 +1,10 @@
 # Nimbus Weather CLI
 
+**NOTE: Please use Homebrew only to install Nimbus, not the .dmg, as it does not work yet. Apologies.**
+
+---
+
+
 Nimbus is a cross-platform weather application for your terminal. Use `wf` to get live forecasts and air-quality information from Open-Meteo.
 
 ## Install
